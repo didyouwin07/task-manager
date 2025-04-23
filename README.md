@@ -49,7 +49,7 @@ git clone https://github.com/didyouwin07/task-manager.git
 cd task-manager
 
 # Run the service
-go run main.go
+go run ./cmd/server/
 ```
 
 The server will start on `http://localhost:8080`.
