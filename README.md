@@ -151,5 +151,3 @@ Returns **204 No Content** on success.
 ## Author
 
 Vishwas Bordia (didyouwin07)
-```
-
