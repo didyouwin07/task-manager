@@ -2,6 +2,7 @@ package handler
 
 import (
     "encoding/json"
+    "log"
     "net/http"
     "strconv"
     "strings"
@@ -22,9 +23,17 @@ func NewTaskHandler(service *service.TaskService) *TaskHandler {
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
     var task model.Task
-    json.NewDecoder(r.Body).Decode(&task)
+    if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+        log.Printf("Failed to decode request body: %v", err)
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
     task.ID = uuid.NewString()
     h.service.Create(task)
+
+    log.Printf("Task created with ID: %s", task.ID)
+
     w.WriteHeader(http.StatusCreated)
     json.NewEncoder(w).Encode(task)
 }
@@ -55,6 +64,7 @@ func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
             }
         }
         tasks = filtered
+        log.Printf("Filtered tasks by status: %s", status)
     }
 
     // Pagination
@@ -68,6 +78,7 @@ func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
         tasks = tasks[start:end]
     }
 
+    log.Printf("Returning tasks page %d with limit %d", page, limit)
     json.NewEncoder(w).Encode(tasks)
 }
 
@@ -75,22 +86,33 @@ func (h *TaskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
     task, found := h.service.GetByID(id)
     if !found {
+        log.Printf("Task not found with ID: %s", id)
         http.NotFound(w, r)
         return
     }
+
+    log.Printf("Retrieved task with ID: %s", id)
     json.NewEncoder(w).Encode(task)
 }
 
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
     var task model.Task
-    json.NewDecoder(r.Body).Decode(&task)
+    if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+        log.Printf("Failed to decode request body: %v", err)
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
     task.ID = id
     updated := h.service.Update(id, task)
     if !updated {
+        log.Printf("Failed to update, task not found with ID: %s", id)
         http.NotFound(w, r)
         return
     }
+
+    log.Printf("Updated task with ID: %s", id)
     json.NewEncoder(w).Encode(task)
 }
 
@@ -98,8 +120,11 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
     deleted := h.service.Delete(id)
     if !deleted {
+        log.Printf("Failed to delete, task not found with ID: %s", id)
         http.NotFound(w, r)
         return
     }
+
+    log.Printf("Deleted task with ID: %s", id)
     w.WriteHeader(http.StatusNoContent)
 }
